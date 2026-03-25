@@ -1,0 +1,46 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Administrador</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="login-page-body">
+<main class="admin-login-card">
+    <section class="admin-login-left">
+      <p class="panel-mini-brand">Administrador</p>
+      <h1>BIENVENIDO DE NUEVO!</h1>
+
+      <form id="loginForm" class="login-form">
+        <label for="username">Nombre de usuario</label>
+        <input id="username" name="username" type="text" placeholder="example@gmail.com" required>
+
+        <label for="password">Contraseña</label>
+        <input id="password" name="password" type="password" placeholder="••••••••" required>
+
+        <div class="login-meta">
+          <a href="#">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <button type="submit">Iniciar sesión</button>
+        <p class="signup-link"><a href="#">¿No tienes una cuenta? Únete aquí</a></p>
+      </form>
+
+      <a class="back-index-btn" href="./index.html">Ir al origen</a>
+      <p id="loginError" class="error-text"></p>
+    </section>
+
+    <section class="admin-login-right">
+      <div class="avatar-ring">
+        <div class="avatar-scene" aria-hidden="true">
+          
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./storage.js"></script>
+  <script src="./login.js"></script>
+</body>
+</html>

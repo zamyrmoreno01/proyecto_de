@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BD_RECUERDOS</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./animations.css">
+</head>
+<body>
+  <main class="home-page">
+    <section class="hero">
+      <video class="hero-video" autoplay muted loop playsinline>
+        <source src="./assec/Videos/Panel_de_Inicio_01.mp4" type="video/mp4">
+      </video>
+      <div class="hero-overlay"></div>
+      <div class="hero-glow hero-glow-left" aria-hidden="true"></div>
+      <div class="hero-glow hero-glow-right" aria-hidden="true"></div>
+      <a
+        class="admin-access-button hero-reveal hero-link-reveal"
+        id="adminAccessButton"
+        href="./login.html"
+        aria-label="Acceso administrador"
+        title="Acceso administrador"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.33 0-6 1.79-6 4v1h12v-1c0-2.21-2.67-4-6-4Z"></path>
+        </svg>
+      </a>
+      <div class="hero-content">
+        <h1 class="hero-reveal hero-title-reveal">UN RECUERDO PARA LA ETERNIDAD</h1>
+        <p class="subtitle hero-reveal hero-subtitle-reveal">Más que tecnología, conexión humana.</p>
+        <p class="quote hero-reveal hero-quote-reveal">"Porque las historias no envejecen."</p>
+
+        <form class="search-box hero-reveal hero-form-reveal" id="searchForm">
+          <input type="text" id="familyIdInput" placeholder="Ingrese el ID de su familiar" required>
+          <button class="search-button" type="submit">Buscar</button>
+        </form>
+      </div>
+      
+    </section>
+
+    <section class="results-section">
+      <h2 class="results-title">Refrescando recuerdos.</h2>
+          <p class="results-status" id="resultsStatus">Ingresa una identificación para ver los recuerdos disponibles.</p>
+      <div id="familyResults" class="family-results"></div>
+    </section>
+  </main>
+
+  <script src="./storage.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>
