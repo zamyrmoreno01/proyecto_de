@@ -1,10 +1,18 @@
+const createIdForm = document.getElementById("createIdForm");
+const newPersonIdInput = document.getElementById("newPersonId");
+const personNameInput = document.getElementById("personName");
+const createIdMessage = document.getElementById("createIdMessage");
+const createIdError = document.getElementById("createIdError");
 const uploadForm = document.getElementById("uploadForm");
 const personIdInput = document.getElementById("personId");
 const filesInput = document.getElementById("mediaFiles");
+const eventNameInput = document.getElementById("eventName");
+const eventDateInput = document.getElementById("eventDate");
 const contentNoteInput = document.getElementById("contentNote");
 const uploadMessage = document.getElementById("uploadMessage");
 const uploadError = document.getElementById("uploadError");
 const adminGallery = document.getElementById("adminGallery");
+const idSearchInput = document.getElementById("idSearch");
 const logoutBtn = document.getElementById("logoutBtn");
 
 if (!isAdminLoggedIn()) {
@@ -16,53 +24,142 @@ logoutBtn?.addEventListener("click", () => {
   window.location.href = "./index.html";
 });
 
+createIdForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  clearMessages();
+
+  const personId = (newPersonIdInput?.value || "").trim();
+  const personName = (personNameInput?.value || "").trim();
+
+  if (!/^\d+$/.test(personId)) {
+    createIdError.textContent = "El ID debe ser numérico.";
+    return;
+  }
+
+  if (!personName) {
+    createIdError.textContent = "El nombre es obligatorio para crear el ID.";
+    return;
+  }
+
+  const db = getAdminDatabase();
+
+  if (db[personId]) {
+    createIdError.textContent = "Ese ID ya existe.";
+    return;
+  }
+
+  db[personId] = {
+    id: personId,
+    name: personName,
+    media: []
+  };
+
+  saveAdminDatabase(db);
+  createIdForm.reset();
+  createIdMessage.textContent = "ID creado correctamente.";
+  populatePersonOptions(personId);
+  renderAdminGallery(idSearchInput?.value.trim() || "");
+});
+
 uploadForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  uploadMessage.textContent = "";
-  uploadError.textContent = "";
+  clearMessages();
 
   const personId = personIdInput.value.trim();
-  const note = contentNoteInput?.value.trim() || "";
-  const files = Array.from(filesInput.files || []);
+  const eventName = eventNameInput?.value.trim() || "";
+  const eventDate = eventDateInput?.value || "";
+  const description = contentNoteInput?.value.trim() || "";
+  const file = filesInput.files?.[0];
+  const db = getAdminDatabase();
+  const personRecord = db[personId];
 
   if (!personId) {
-    uploadError.textContent = "La identificación es obligatoria.";
+    uploadError.textContent = "Debes seleccionar un ID registrado.";
     return;
   }
 
-  if (!files.length) {
-    uploadError.textContent = "Selecciona al menos un archivo.";
+  if (!personRecord || !personRecord.name.trim()) {
+    uploadError.textContent = "El archivo debe asociarse a un ID previamente creado con nombre.";
     return;
   }
 
-  const invalidFile = files.find(
-    (file) => !file.type.startsWith("image/") && !file.type.startsWith("video/")
-  );
+  if (!file) {
+    uploadError.textContent = "Selecciona un archivo.";
+    return;
+  }
 
-  if (invalidFile) {
-    uploadError.textContent = `Archivo no válido: ${invalidFile.name}`;
+  if (!isAllowedFile(file)) {
+    uploadError.textContent = `Archivo no válido: ${file.name}. Solo se permite MP4, JPG o PNG.`;
+    return;
+  }
+
+  if (!eventName) {
+    uploadError.textContent = "El nombre del evento es obligatorio.";
+    return;
+  }
+
+  if (!eventDate) {
+    uploadError.textContent = "La fecha del evento es obligatoria.";
+    return;
+  }
+
+  if (!description) {
+    uploadError.textContent = "La descripción del evento es obligatoria.";
     return;
   }
 
   try {
-    const convertedFiles = await Promise.all(files.map((file) => fileToMediaRecord(file, note)));
-    const db = getMediaDatabase();
-    if (!Array.isArray(db[personId])) {
-      db[personId] = [];
-    }
+    const mediaRecord = await fileToMediaRecord(file, {
+      eventName,
+      eventDate,
+      description
+    });
 
-    db[personId].push(...convertedFiles);
-    saveMediaDatabase(db);
+    personRecord.media = Array.isArray(personRecord.media) ? personRecord.media : [];
+    personRecord.media.push(mediaRecord);
+    db[personId] = personRecord;
+    saveAdminDatabase(db);
 
-    uploadMessage.textContent = "Contenido guardado correctamente.";
     uploadForm.reset();
-    renderAdminGallery();
+    personIdInput.value = personId;
+    uploadMessage.textContent = "Contenido guardado correctamente.";
+    renderAdminGallery(idSearchInput?.value.trim() || "");
   } catch (error) {
-    uploadError.textContent = "No se pudo procesar los archivos.";
+    uploadError.textContent = "No se pudo procesar el archivo.";
   }
 });
 
-function fileToMediaRecord(file, description) {
+idSearchInput?.addEventListener("input", () => {
+  renderAdminGallery(idSearchInput.value.trim());
+});
+
+function clearMessages() {
+  if (createIdMessage) createIdMessage.textContent = "";
+  if (createIdError) createIdError.textContent = "";
+  if (uploadMessage) uploadMessage.textContent = "";
+  if (uploadError) uploadError.textContent = "";
+}
+
+function populatePersonOptions(selectedId = "") {
+  if (!personIdInput) return;
+
+  const db = getAdminDatabase();
+  const entries = Object.values(db)
+    .filter((entry) => entry && typeof entry.name === "string" && entry.name.trim())
+    .sort((a, b) => String(a.id).localeCompare(String(b.id), "es"));
+
+  personIdInput.innerHTML = '<option value="">Selecciona un ID con nombre</option>';
+
+  entries.forEach((entry) => {
+    const option = document.createElement("option");
+    option.value = entry.id;
+    option.textContent = `${entry.id} - ${entry.name}`;
+    option.selected = entry.id === selectedId;
+    personIdInput.appendChild(option);
+  });
+}
+
+function fileToMediaRecord(file, metadata) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -71,7 +168,9 @@ function fileToMediaRecord(file, description) {
         name: file.name,
         type: file.type,
         dataUrl: reader.result,
-        description,
+        eventName: metadata.eventName,
+        eventDate: metadata.eventDate,
+        description: metadata.description,
         createdAt: new Date().toISOString()
       });
     };
@@ -80,18 +179,33 @@ function fileToMediaRecord(file, description) {
   });
 }
 
-function renderAdminGallery() {
-  const db = getMediaDatabase();
-  const personIds = Object.keys(db).sort();
+function renderAdminGallery(searchTerm = "") {
+  if (!adminGallery) return;
+
+  const db = getAdminDatabase();
+  const records = Object.values(db).sort((a, b) => String(a.id).localeCompare(String(b.id), "es"));
+  const normalizedQuery = normalizeText(searchTerm);
   adminGallery.innerHTML = "";
 
-  if (!personIds.length) {
-    adminGallery.innerHTML = '<p class="empty-msg">Aún no hay contenido registrado.</p>';
+  if (!records.length) {
+    adminGallery.innerHTML = '<p class="empty-msg">Aún no hay IDs registrados.</p>';
     return;
   }
 
-  personIds.forEach((personId) => {
-    const mediaList = Array.isArray(db[personId]) ? db[personId] : [];
+  const filteredRecords = records.filter((record) => {
+    if (!normalizedQuery) return true;
+    return normalizeText(`${record.id} ${record.name}`).includes(normalizedQuery);
+  });
+
+  if (!filteredRecords.length) {
+    adminGallery.innerHTML = '<p class="empty-msg">No hay resultados para la búsqueda actual.</p>';
+    return;
+  }
+
+  filteredRecords.forEach((record) => {
+    const personId = String(record.id);
+    const personName = record.name || "Sin nombre";
+    const mediaList = Array.isArray(record.media) ? record.media : [];
     const block = document.createElement("article");
     block.className = "person-block";
 
@@ -121,83 +235,113 @@ function renderAdminGallery() {
     const detail = document.createElement("div");
     detail.className = "person-detail is-hidden";
 
-    const grid = document.createElement("div");
-    grid.className = "person-media-grid";
+    const meta = document.createElement("p");
+    meta.className = "person-meta";
+    meta.innerHTML = `<strong>Nombre:</strong> ${escapeHtml(personName)}`;
+    detail.appendChild(meta);
 
-    mediaList.forEach((media) => {
-      const card = document.createElement("div");
-      card.className = "media-card";
+    if (!mediaList.length) {
+      const emptyState = document.createElement("p");
+      emptyState.className = "empty-msg";
+      emptyState.textContent = "Este ID aún no tiene archivos cargados.";
+      detail.appendChild(emptyState);
+    } else {
+      const grid = document.createElement("div");
+      grid.className = "person-media-grid";
 
-      if (media.type.startsWith("image/")) {
-        const img = document.createElement("img");
-        img.src = media.dataUrl;
-        img.alt = media.name;
-        card.appendChild(img);
-      } else if (media.type.startsWith("video/")) {
-        const video = document.createElement("video");
-        video.src = media.dataUrl;
-        video.controls = true;
-        card.appendChild(video);
-      }
+      mediaList.forEach((media) => {
+        const card = document.createElement("div");
+        card.className = "media-card";
 
-      const caption = document.createElement("p");
-      caption.className = "media-caption";
-      caption.textContent = (media.description || "").trim() || "Sin descripción";
-      card.appendChild(caption);
-
-      const uploadedAt = document.createElement("p");
-      uploadedAt.className = "media-date";
-      uploadedAt.textContent = `Subido: ${formatDate(media.createdAt)}`;
-      card.appendChild(uploadedAt);
-
-      const actions = document.createElement("div");
-      actions.className = "media-actions";
-
-      const editBtn = document.createElement("button");
-      editBtn.className = "edit-btn";
-      editBtn.textContent = "Modificar";
-      editBtn.addEventListener("click", () => {
-        const currentText = (media.description || "").trim();
-        const nextText = window.prompt("Modifica el texto del archivo:", currentText);
-        if (nextText === null) {
-          return;
+        if (media.type.startsWith("image/")) {
+          const img = document.createElement("img");
+          img.src = media.dataUrl;
+          img.alt = media.eventName || media.name || "Imagen";
+          card.appendChild(img);
+        } else if (media.type.startsWith("video/")) {
+          const video = document.createElement("video");
+          video.src = media.dataUrl;
+          video.controls = true;
+          card.appendChild(video);
         }
-        const latest = getMediaDatabase();
-        latest[personId] = (latest[personId] || []).map((item) => {
-          if (item.id !== media.id) return item;
-          return {
-            ...item,
-            description: nextText.trim()
-          };
+
+        const eventTitle = document.createElement("p");
+        eventTitle.className = "media-title";
+        eventTitle.textContent = media.eventName || media.name || "Archivo sin título";
+        card.appendChild(eventTitle);
+
+        const caption = document.createElement("p");
+        caption.className = "media-caption";
+        caption.textContent = (media.description || "").trim() || "Sin descripción";
+        card.appendChild(caption);
+
+        const eventDate = document.createElement("p");
+        eventDate.className = "media-date";
+        eventDate.textContent = `Evento: ${formatEventDate(media.eventDate)}`;
+        card.appendChild(eventDate);
+
+        const uploadedAt = document.createElement("p");
+        uploadedAt.className = "media-date";
+        uploadedAt.textContent = `Subido: ${formatDate(media.createdAt)}`;
+        card.appendChild(uploadedAt);
+
+        const actions = document.createElement("div");
+        actions.className = "media-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "edit-btn";
+        editBtn.textContent = "Modificar";
+        editBtn.addEventListener("click", () => {
+          const nextEventName = window.prompt("Modifica el nombre del evento:", media.eventName || "");
+          if (nextEventName === null) return;
+
+          const nextEventDate = window.prompt("Modifica la fecha del evento (AAAA-MM-DD):", media.eventDate || "");
+          if (nextEventDate === null) return;
+
+          const nextDescription = window.prompt("Modifica la descripción del evento:", media.description || "");
+          if (nextDescription === null) return;
+
+          if (!nextEventName.trim() || !nextEventDate.trim() || !nextDescription.trim()) {
+            window.alert("Todos los datos del evento son obligatorios.");
+            return;
+          }
+
+          const latest = getAdminDatabase();
+          latest[personId].media = (latest[personId].media || []).map((item) => {
+            if (item.id !== media.id) return item;
+            return {
+              ...item,
+              eventName: nextEventName.trim(),
+              eventDate: nextEventDate.trim(),
+              description: nextDescription.trim()
+            };
+          });
+          saveAdminDatabase(latest);
+          renderAdminGallery(idSearchInput?.value.trim() || "");
         });
-        saveMediaDatabase(latest);
-        renderAdminGallery();
-      });
-      actions.appendChild(editBtn);
+        actions.appendChild(editBtn);
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "delete-btn";
-      deleteBtn.textContent = "Eliminar";
-      deleteBtn.addEventListener("click", () => {
-        const shouldDelete = window.confirm("¿Quieres eliminar este archivo?");
-        if (!shouldDelete) {
-          return;
-        }
-        const latest = getMediaDatabase();
-        latest[personId] = (latest[personId] || []).filter((item) => item.id !== media.id);
-        if (!latest[personId].length) {
-          delete latest[personId];
-        }
-        saveMediaDatabase(latest);
-        renderAdminGallery();
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.textContent = "Eliminar";
+        deleteBtn.addEventListener("click", () => {
+          const shouldDelete = window.confirm("¿Quieres eliminar este archivo?");
+          if (!shouldDelete) return;
+
+          const latest = getAdminDatabase();
+          latest[personId].media = (latest[personId].media || []).filter((item) => item.id !== media.id);
+          saveAdminDatabase(latest);
+          renderAdminGallery(idSearchInput?.value.trim() || "");
+        });
+        actions.appendChild(deleteBtn);
+
+        card.appendChild(actions);
+        grid.appendChild(card);
       });
 
-      actions.appendChild(deleteBtn);
-      card.appendChild(actions);
-      grid.appendChild(card);
-    });
+      detail.appendChild(grid);
+    }
 
-    detail.appendChild(grid);
     block.appendChild(detail);
 
     showMoreBtn.addEventListener("click", () => {
@@ -210,7 +354,16 @@ function renderAdminGallery() {
   });
 }
 
-renderAdminGallery();
+function isAllowedFile(file) {
+  return ["image/jpeg", "image/png", "video/mp4"].includes(file.type);
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
 
 function generateId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -231,3 +384,23 @@ function formatDate(isoDate) {
     minute: "2-digit"
   });
 }
+
+function formatEventDate(rawDate) {
+  if (!rawDate) return "Fecha no disponible";
+  const parsedDate = new Date(`${rawDate}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) return rawDate;
+  return parsedDate.toLocaleDateString("es-CO", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+populatePersonOptions();
+renderAdminGallery();

@@ -116,6 +116,10 @@ body.admin-page-body {
   padding: 20px 20px 18px;
 }
 
+.admin-form {
+  padding: 20px 20px 18px;
+}
+
 .field-label {
   display: block;
   margin-bottom: 7px;
@@ -126,7 +130,11 @@ body.admin-page-body {
   text-transform: uppercase;
 }
 
-#personId {
+#personId,
+#newPersonId,
+#personName,
+#eventName,
+#eventDate {
   width: 100%;
   border: 1px solid var(--border-soft);
   border-radius: 11px;
@@ -138,10 +146,24 @@ body.admin-page-body {
   outline: none;
 }
 
+.compact-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
 .upload-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: 1fr 1fr;
+}
+
+.metadata-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+
+.full-width {
+  grid-column: 1 / -1;
 }
 
 .upload-drop {
@@ -177,6 +199,15 @@ body.admin-page-body {
   background: #efe4d7;
   color: #af7d51;
   font-size: 1.05rem;
+}
+
+.upload-drop strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.upload-drop p {
+  margin: 0;
 }
 
 .text-editor {
@@ -384,10 +415,26 @@ body.admin-page-body {
   min-height: 28px;
 }
 
+.media-card .media-title {
+  margin-bottom: 2px;
+  font-weight: 700;
+  color: #4e3d2f;
+}
+
 .media-card .media-date {
   margin-top: 0;
   font-size: 0.67rem;
   color: #8b7d6f;
+}
+
+.person-meta {
+  padding: 8px 8px 0;
+  font-size: 0.72rem;
+  color: #736352;
+}
+
+.person-meta strong {
+  color: #4f4032;
 }
 
 .media-actions {
@@ -426,6 +473,10 @@ body.admin-page-body {
 
 @media (max-width: 850px) {
   .upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-grid {
     grid-template-columns: 1fr;
   }
 

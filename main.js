@@ -39,7 +39,7 @@ function renderFamilyContent(personId) {
     if (item.type.startsWith("image/")) {
       const img = document.createElement("img");
       img.src = item.dataUrl;
-      img.alt = item.name || "Imagen familiar";
+      img.alt = item.eventName || item.name || "Imagen familiar";
       card.appendChild(img);
     } else if (item.type.startsWith("video/")) {
       const video = document.createElement("video");
@@ -49,8 +49,25 @@ function renderFamilyContent(personId) {
     }
 
     const caption = document.createElement("p");
-    caption.textContent = item.name || "Archivo";
+    caption.textContent = item.eventName || item.name || "Archivo";
     card.appendChild(caption);
+
+    if (item.eventDate || item.description) {
+      const detail = document.createElement("p");
+      const detailParts = [];
+
+      if (item.eventDate) {
+        detailParts.push(`Fecha: ${item.eventDate}`);
+      }
+
+      if (item.description) {
+        detailParts.push(item.description);
+      }
+
+      detail.textContent = detailParts.join(" | ");
+      card.appendChild(detail);
+    }
+
     familyResults.appendChild(card);
 
     card.addEventListener(

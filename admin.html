@@ -3,111 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administración</title>
+  <title>Panel Administrador</title>
   <link rel="stylesheet" href="./admin.css">
 </head>
 <body class="admin-page-body">
   <main class="admin-page">
     <section class="hero">
-      <h1>Álbum de Vida</h1>
-      <p>Un espacio para guardar los momentos que hacen latir tu corazón</p>
+      <h1>Panel de administración</h1>
+      <p>El administrador crea IDs, les asigna un nombre y registra archivos con la información obligatoria del evento.</p>
     </section>
 
     <section class="panel">
-      <header class="panel-header">
+      <div class="panel-header">
         <div class="panel-title">
-          <span class="icon">*</span>
+          <div class="icon" aria-hidden="true">ID</div>
           <div class="panel-title-text">
-            <strong>Nuevo Recuerdo</strong>
-            <span>Guarda un momento especial</span>
+            <strong>Crear identificación</strong>
+            <span>Todo ID numérico debe registrarse primero con un nombre.</span>
           </div>
         </div>
-        <button id="logoutBtn" type="button">Salir</button>
-      </header>
+        <button id="logoutBtn" type="button">Cerrar sesión</button>
+      </div>
 
-      <form id="uploadForm">
-        <label for="personId" class="field-label">Identificador ID</label>
-        <input id="personId" type="text" placeholder="El ID debe ser un valor numérico" required>
-
-        <div class="upload-grid">
+      <form id="createIdForm" class="admin-form">
+        <div class="upload-grid compact-grid">
           <div>
-            <label for="mediaFiles" class="field-label">Imagen o video</label>
-            <div class="upload-drop">
-              <div>
-                <div>Arrastra tu recuerdo aquí</div>
-                <div style="font-size:0.78rem; margin-top:4px;">o haz clic para buscar</div>
-              </div>
-              <input id="mediaFiles" type="file" accept="image/*,video/*" multiple required>
-            </div>
+            <label class="field-label" for="newPersonId">ID numérico</label>
+            <input id="newPersonId" name="newPersonId" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ejemplo: 1023456789" required>
           </div>
-
           <div>
-            <label for="contentNote" class="field-label">Tu historia</label>
-            <div class="text-editor">
-              <textarea id="contentNote" placeholder="Escribe lo que este momento significa para ti..."></textarea>
-            </div>
-            <div class="save-row">
-              <button type="submit">Guardar recuerdo</button>
-            </div>
+            <label class="field-label" for="personName">Nombre asignado</label>
+            <input id="personName" name="personName" type="text" placeholder="Nombre completo" required>
           </div>
         </div>
-
-        <p class="hint">Una identificación puede tener múltiples imágenes y videos.</p>
-        <p id="uploadMessage" class="success-text"></p>
-        <p id="uploadError" class="error-text"></p>
+        <div class="save-row">
+          <button type="submit">Crear ID</button>
+        </div>
+        <p id="createIdMessage" class="success-text" aria-live="polite"></p>
+        <p id="createIdError" class="error-text" aria-live="polite"></p>
       </form>
     </section>
 
-    <section class="panel admin-card">
-      <div class="admin-top">
-        <div class="section-title-wrap">
-          <h2 class="section-title">Contenido Registrado</h2>
-          <span id="itemsCount" class="section-sub">0 elementos</span>
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="icon" aria-hidden="true">UP</div>
+          <div class="panel-title-text">
+            <strong>Cargar archivo</strong>
+            <span>Solo el administrador puede asociar archivos a IDs ya creados y con nombre.</span>
+          </div>
         </div>
       </div>
 
-      <div class="search-row">
-        <input id="idSearch" type="text" placeholder="Buscar por ID...">
+      <form id="uploadForm" class="admin-form">
+        <label class="field-label" for="personId">Selecciona un ID registrado</label>
+        <select id="personId" name="personId" required>
+          <option value="">Selecciona un ID con nombre</option>
+        </select>
+
+        <div class="upload-grid">
+          <div class="upload-drop">
+            <input id="mediaFiles" name="mediaFiles" type="file" accept=".mp4,.jpg,.jpeg,.png,image/png,image/jpeg,video/mp4" required>
+            <div>
+              <div class="drop-icon" aria-hidden="true">+</div>
+              <strong>Archivo obligatorio</strong>
+              <p>Formatos permitidos: MP4, JPG o PNG.</p>
+            </div>
+          </div>
+
+          <div class="metadata-grid">
+            <div>
+              <label class="field-label" for="eventName">Nombre del evento</label>
+              <input id="eventName" name="eventName" type="text" placeholder="Ejemplo: Cumpleaños 80" required>
+            </div>
+            <div>
+              <label class="field-label" for="eventDate">Fecha del evento</label>
+              <input id="eventDate" name="eventDate" type="date" required>
+            </div>
+            <div class="full-width">
+              <label class="field-label" for="contentNote">Descripción del evento</label>
+              <div class="text-editor">
+                <textarea id="contentNote" name="contentNote" placeholder="Describe lo ocurrido en este recuerdo." required></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">No se puede guardar ningún archivo sin ID previo, nombre asignado, evento, fecha y descripción.</p>
+        <div class="save-row">
+          <button type="submit">Guardar archivo</button>
+        </div>
+        <p id="uploadMessage" class="success-text" aria-live="polite"></p>
+        <p id="uploadError" class="error-text" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="icon" aria-hidden="true">BD</div>
+          <div class="panel-title-text">
+            <strong>Registros administrados</strong>
+            <span>Vista general de IDs, nombres y archivos asociados.</span>
+          </div>
+        </div>
       </div>
 
-      <div id="adminGallery" class="admin-gallery"></div>
+      <div class="admin-card">
+        <div class="admin-top">
+          <div class="section-title-wrap">
+            <h2 class="section-title">Contenido registrado</h2>
+            <span class="section-sub">Cada ID conserva su nombre incluso si aún no tiene archivos.</span>
+          </div>
+          <div class="search-row">
+            <input id="idSearch" type="search" placeholder="Buscar por ID o nombre">
+          </div>
+        </div>
+        <div id="adminGallery" class="admin-gallery"></div>
+      </div>
     </section>
   </main>
 
   <script src="./storage.js"></script>
   <script src="./admin.js"></script>
-  <script>
-    const idSearch = document.getElementById("idSearch");
-    const itemsCount = document.getElementById("itemsCount");
-    const galleryNode = document.getElementById("adminGallery");
-
-    function updateItemsCounter() {
-      const db = getMediaDatabase();
-      const count = Object.values(db).reduce((acc, list) => acc + list.length, 0);
-      itemsCount.textContent = `${count} elemento${count === 1 ? "" : "s"}`;
-    }
-
-    function filterById() {
-      const query = (idSearch.value || "").trim().toLowerCase();
-      const blocks = galleryNode.querySelectorAll(".person-block");
-      blocks.forEach((block) => {
-        const title = block.querySelector(".person-header h3");
-        const text = (title?.textContent || "").toLowerCase();
-        block.style.display = text.includes(query) ? "" : "none";
-      });
-    }
-
-    if (typeof renderAdminGallery === "function") {
-      const originalRender = renderAdminGallery;
-      renderAdminGallery = function wrappedRender() {
-        originalRender();
-        updateItemsCounter();
-        filterById();
-      };
-      renderAdminGallery();
-    }
-
-    idSearch?.addEventListener("input", filterById);
-  </script>
 </body>
 </html>
