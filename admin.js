@@ -14,6 +14,8 @@ const uploadError = document.getElementById("uploadError");
 const adminGallery = document.getElementById("adminGallery");
 const idSearchInput = document.getElementById("idSearch");
 const logoutBtn = document.getElementById("logoutBtn");
+const MAX_MP4_DURATION_SECONDS = 1800;
+const MAX_MP4_SIZE_BYTES = 1.5 * 1024 * 1024 * 1024;
 
 if (!isAdminLoggedIn()) {
   window.location.replace("./login.html");
@@ -93,6 +95,13 @@ uploadForm?.addEventListener("submit", async (event) => {
     return;
   }
 
+  try {
+    await validateMediaFile(file);
+  } catch (error) {
+    uploadError.textContent = error.message || "El archivo no cumple con las restricciones permitidas.";
+    return;
+  }
+
   if (!eventName) {
     uploadError.textContent = "El nombre del evento es obligatorio.";
     return;
@@ -128,7 +137,6 @@ uploadForm?.addEventListener("submit", async (event) => {
     uploadError.textContent = "No se pudo procesar el archivo.";
   }
 });
-
 idSearchInput?.addEventListener("input", () => {
   renderAdminGallery(idSearchInput.value.trim());
 });
@@ -176,6 +184,59 @@ function fileToMediaRecord(file, metadata) {
     };
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
+  });
+}
+
+function validateMediaFile(file) {
+  if (file.type !== "video/mp4") {
+    return Promise.resolve();
+  }
+
+  if (file.size > MAX_MP4_SIZE_BYTES) {
+    return Promise.reject(
+      new Error(`El archivo MP4 supera el tamaÃ±o mÃ¡ximo permitido de ${formatFileSize(MAX_MP4_SIZE_BYTES)}.`)
+    );
+  }
+
+  return getVideoDuration(file).then((durationInSeconds) => {
+    if (durationInSeconds > MAX_MP4_DURATION_SECONDS) {
+      throw new Error(
+        `El video MP4 supera la duraciÃ³n mÃ¡xima permitida de ${formatDuration(MAX_MP4_DURATION_SECONDS)}.`
+      );
+    }
+  });
+}
+
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    const objectUrl = URL.createObjectURL(file);
+
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const duration = Number(video.duration);
+      cleanup();
+
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error("No se pudo leer la duraciÃ³n del video MP4."));
+        return;
+      }
+
+      resolve(duration);
+    };
+
+    video.onerror = () => {
+      cleanup();
+      reject(new Error("No se pudo validar el video MP4 seleccionado."));
+    };
+
+    video.src = objectUrl;
   });
 }
 
@@ -394,6 +455,17 @@ function formatEventDate(rawDate) {
     month: "2-digit",
     day: "2-digit"
   });
+}
+
+function formatFileSize(bytes) {
+  const gigabytes = bytes / (1024 * 1024 * 1024);
+  return `${gigabytes.toFixed(1)} GB`;
+}
+
+function formatDuration(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes} min${seconds ? ` ${seconds} s` : ""}`;
 }
 
 function escapeHtml(text) {
