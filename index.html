@@ -40,9 +40,29 @@
     </section>
 
     <section class="results-section">
-      <h2 class="results-title">Refrescando recuerdos.</h2>
+      <div class="results-shell">
+        <div class="results-copy">
+          <h2 class="results-title">Refrescando recuerdos.</h2>
           <p class="results-status" id="resultsStatus">Ingresa una identificación para ver los recuerdos disponibles.</p>
-      <div id="familyResults" class="family-results"></div>
+        </div>
+
+        <div class="scope product-cards -fluid-text">
+          <div
+            id="familyResults"
+            class="family-results _card-list grid"
+            aria-live="polite"
+          ></div>
+
+          <svg width="0" height="0" style="visibility: hidden; position: fixed;" aria-hidden="true" focusable="false">
+            <filter id="svg-inset-shadow">
+              <feOffset in="SourceAlpha" dx="6" dy="8"></feOffset>
+              <feGaussianBlur in="SourceAlpha" stdDeviation="8"></feGaussianBlur>
+              <feComposite in="SourceAlpha" operator="out"></feComposite>
+              <feBlend in2="SourceGraphic" mode="multiply"></feBlend>
+            </filter>
+          </svg>
+        </div>
+      </div>
     </section>
   </main>
 
