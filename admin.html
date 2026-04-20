@@ -64,10 +64,29 @@
         <div class="upload-grid">
           <div class="upload-drop">
             <input id="mediaFiles" name="mediaFiles" type="file" accept=".mp4,.jpg,.jpeg,.png,image/png,image/jpeg,video/mp4" required>
-            <div>
-              <div class="drop-icon" aria-hidden="true">+</div>
-              <strong>Archivo obligatorio</strong>
-              <p>Formatos permitidos: MP4, JPG o PNG. MP4: maximo 30 minutos o 1.5 GB.</p>
+            <div class="upload-drop-shell">
+              <div class="upload-drop-copy">
+                <div class="drop-icon" aria-hidden="true">+</div>
+                <strong>Archivo obligatorio</strong>
+                <p>Formatos permitidos: MP4, JPG o PNG. MP4: maximo 30 minutos o 1.5 GB.</p>
+              </div>
+
+              <div id="uploadPreview" class="upload-preview" aria-live="polite">
+                <div id="uploadPreviewMedia" class="upload-preview-media">
+                  <div class="upload-preview-placeholder">Sin archivo seleccionado</div>
+                </div>
+                <div class="upload-preview-copy">
+                  <p class="upload-preview-label">Vista previa</p>
+                  <strong id="uploadPreviewName">Aun no hay archivo multimedia</strong>
+                  <p id="uploadPreviewMeta">Selecciona una imagen o un video para ver la previsualizacion aqui.</p>
+                </div>
+              </div>
+
+              <div id="uploadProgress" class="upload-progress" aria-live="polite">
+                <p class="upload-progress-title">Pendiente para guardar</p>
+                <p id="uploadProgressSummary" class="upload-progress-summary">Faltan 5 elementos obligatorios.</p>
+                <ul id="uploadChecklist" class="upload-checklist"></ul>
+              </div>
             </div>
           </div>
 

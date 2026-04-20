@@ -9,6 +9,14 @@ const filesInput = document.getElementById("mediaFiles");
 const eventNameInput = document.getElementById("eventName");
 const eventDateInput = document.getElementById("eventDate");
 const contentNoteInput = document.getElementById("contentNote");
+const uploadDrop = document.querySelector(".upload-drop");
+const uploadPreview = document.getElementById("uploadPreview");
+const uploadPreviewMedia = document.getElementById("uploadPreviewMedia");
+const uploadPreviewName = document.getElementById("uploadPreviewName");
+const uploadPreviewMeta = document.getElementById("uploadPreviewMeta");
+const uploadProgress = document.getElementById("uploadProgress");
+const uploadProgressSummary = document.getElementById("uploadProgressSummary");
+const uploadChecklist = document.getElementById("uploadChecklist");
 const uploadMessage = document.getElementById("uploadMessage");
 const uploadError = document.getElementById("uploadError");
 const adminGallery = document.getElementById("adminGallery");
@@ -16,6 +24,7 @@ const idSearchInput = document.getElementById("idSearch");
 const logoutBtn = document.getElementById("logoutBtn");
 const MAX_MP4_DURATION_SECONDS = 1800;
 const MAX_MP4_SIZE_BYTES = 1.5 * 1024 * 1024 * 1024;
+let uploadPreviewObjectUrl = "";
 
 if (!isAdminLoggedIn()) {
   window.location.replace("./login.html");
@@ -132,6 +141,7 @@ uploadForm?.addEventListener("submit", async (event) => {
     uploadForm.reset();
     personIdInput.value = personId;
     uploadMessage.textContent = "Contenido guardado correctamente.";
+    updateUploadDropState();
     renderAdminGallery(idSearchInput?.value.trim() || "");
   } catch (error) {
     uploadError.textContent = "No se pudo procesar el archivo.";
@@ -139,6 +149,32 @@ uploadForm?.addEventListener("submit", async (event) => {
 });
 idSearchInput?.addEventListener("input", () => {
   renderAdminGallery(idSearchInput.value.trim());
+});
+
+filesInput?.addEventListener("change", () => {
+  updateUploadDropState();
+});
+
+personIdInput?.addEventListener("change", () => {
+  updateUploadDropState();
+});
+
+eventNameInput?.addEventListener("input", () => {
+  updateUploadDropState();
+});
+
+eventDateInput?.addEventListener("change", () => {
+  updateUploadDropState();
+});
+
+contentNoteInput?.addEventListener("input", () => {
+  updateUploadDropState();
+});
+
+uploadForm?.addEventListener("reset", () => {
+  window.setTimeout(() => {
+    updateUploadDropState();
+  }, 0);
 });
 
 function clearMessages() {
@@ -165,6 +201,171 @@ function populatePersonOptions(selectedId = "") {
     option.selected = entry.id === selectedId;
     personIdInput.appendChild(option);
   });
+
+  updateUploadDropState();
+}
+
+function updateUploadDropState() {
+  const selectedFile = filesInput?.files?.[0] || null;
+  const checklistItems = [
+    {
+      label: "Seleccionar un ID registrado",
+      complete: Boolean(personIdInput?.value.trim())
+    },
+    {
+      label: "Seleccionar un archivo multimedia",
+      complete: Boolean(selectedFile)
+    },
+    {
+      label: "Agregar nombre del evento",
+      complete: Boolean(eventNameInput?.value.trim())
+    },
+    {
+      label: "Agregar fecha del evento",
+      complete: Boolean(eventDateInput?.value)
+    },
+    {
+      label: "Agregar descripcion del evento",
+      complete: Boolean(contentNoteInput?.value.trim())
+    }
+  ];
+
+  renderUploadPreview(selectedFile);
+  renderUploadChecklist(checklistItems);
+}
+
+function renderUploadPreview(file) {
+  if (!uploadPreview || !uploadPreviewMedia || !uploadPreviewName || !uploadPreviewMeta) {
+    return;
+  }
+
+  clearUploadPreviewObjectUrl();
+  uploadPreviewMedia.replaceChildren();
+
+  if (!file) {
+    uploadPreview.classList.add("is-empty");
+    uploadPreviewName.textContent = "Aun no hay archivo multimedia";
+    uploadPreviewMeta.textContent = "Selecciona una imagen o un video para ver la previsualizacion aqui.";
+    uploadPreviewMedia.appendChild(createUploadPreviewPlaceholder("Sin archivo seleccionado"));
+    return;
+  }
+
+  uploadPreview.classList.remove("is-empty");
+  uploadPreviewName.textContent = file.name;
+  uploadPreviewMeta.textContent = `${getUploadFileLabel(file.type)} - ${formatReadableFileSize(file.size)}`;
+
+  if (!isAllowedFile(file)) {
+    uploadPreviewMedia.appendChild(createUploadPreviewPlaceholder("Formato no compatible"));
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  uploadPreviewObjectUrl = objectUrl;
+
+  if (file.type.startsWith("image/")) {
+    const image = document.createElement("img");
+    image.src = objectUrl;
+    image.alt = file.name || "Vista previa de la imagen seleccionada";
+    uploadPreviewMedia.appendChild(image);
+    return;
+  }
+
+  if (file.type.startsWith("video/")) {
+    const video = document.createElement("video");
+    video.src = objectUrl;
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.preload = "metadata";
+    video.setAttribute("playsinline", "");
+    video.setAttribute("aria-label", file.name || "Vista previa del video seleccionado");
+    uploadPreviewMedia.appendChild(video);
+    return;
+  }
+
+  uploadPreviewMedia.appendChild(createUploadPreviewPlaceholder("Vista previa no disponible"));
+}
+
+function renderUploadChecklist(items) {
+  if (!uploadChecklist || !uploadProgressSummary || !uploadProgress) {
+    return;
+  }
+
+  uploadChecklist.replaceChildren();
+
+  items.forEach((item) => {
+    const listItem = document.createElement("li");
+    listItem.className = `upload-checklist-item ${item.complete ? "is-complete" : "is-pending"}`;
+
+    const mark = document.createElement("span");
+    mark.className = "upload-checklist-mark";
+    mark.textContent = item.complete ? "OK" : "-";
+    mark.setAttribute("aria-hidden", "true");
+
+    const text = document.createElement("span");
+    text.textContent = item.label;
+
+    listItem.appendChild(mark);
+    listItem.appendChild(text);
+    uploadChecklist.appendChild(listItem);
+  });
+
+  const pendingItems = items.filter((item) => !item.complete);
+  const isComplete = pendingItems.length === 0;
+
+  uploadProgress.classList.toggle("is-complete", isComplete);
+  uploadDrop?.classList.toggle("is-ready", isComplete);
+
+  if (isComplete) {
+    uploadProgressSummary.textContent = "Todo listo para guardar el archivo multimedia.";
+    return;
+  }
+
+  uploadProgressSummary.textContent = `Faltan ${pendingItems.length} elemento${pendingItems.length === 1 ? "" : "s"} obligatorio${pendingItems.length === 1 ? "" : "s"} por completar.`;
+}
+
+function createUploadPreviewPlaceholder(message) {
+  const placeholder = document.createElement("div");
+  placeholder.className = "upload-preview-placeholder";
+  placeholder.textContent = message;
+  return placeholder;
+}
+
+function clearUploadPreviewObjectUrl() {
+  if (!uploadPreviewObjectUrl) {
+    return;
+  }
+
+  URL.revokeObjectURL(uploadPreviewObjectUrl);
+  uploadPreviewObjectUrl = "";
+}
+
+function getUploadFileLabel(fileType) {
+  if (fileType === "image/jpeg") {
+    return "Imagen JPG";
+  }
+
+  if (fileType === "image/png") {
+    return "Imagen PNG";
+  }
+
+  if (fileType === "video/mp4") {
+    return "Video MP4";
+  }
+
+  return "Archivo";
+}
+
+function formatReadableFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / (1024 ** unitIndex);
+  const digits = value >= 10 || unitIndex === 0 ? 0 : 1;
+  return `${value.toFixed(digits)} ${units[unitIndex]}`;
 }
 
 function fileToMediaRecord(file, metadata) {
@@ -476,3 +677,4 @@ function escapeHtml(text) {
 
 populatePersonOptions();
 renderAdminGallery();
+updateUploadDropState();
