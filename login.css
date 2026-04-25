@@ -2,6 +2,17 @@
   box-sizing: border-box;
 }
 
+:root {
+  --sepia-dark: #2f2218;
+  --sepia-deep: #1d140d;
+  --sepia-mid: #5e4a33;
+  --sepia-border: #80562f;
+  --sepia-button: #b88758;
+  --sepia-soft: #d3a376;
+  --cream: #ffe0b2;
+  --cream-light: #fff2df;
+}
+
 .login-page-body {
   min-height: 100vh;
   margin: 0;
@@ -10,8 +21,9 @@
   justify-content: center;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background:
-    repeating-radial-gradient(circle at 8% 10%, #00000014 0 2px, transparent 2px 28px),
-    linear-gradient(120deg, #3e2522 8%, #d3a376 62%);
+    repeating-radial-gradient(circle at 8% 10%, rgba(255, 224, 178, 0.08) 0 2px, transparent 2px 28px),
+    radial-gradient(circle at 18% 20%, rgba(255, 194, 128, 0.22), transparent 32%),
+    linear-gradient(120deg, var(--sepia-deep) 0%, var(--sepia-dark) 44%, var(--sepia-soft) 100%);
   padding: 20px;
 }
 
@@ -20,23 +32,23 @@
   min-height: 560px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background: #fff2df;
-  border: 1px solid #00000059;
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  background: var(--cream-light);
+  border: 1px solid rgba(128, 86, 47, 0.58);
+  box-shadow: 0 24px 50px rgba(23, 11, 5, 0.45);
   overflow: hidden;
   border-radius: 12px;
 }
 
 .admin-login-left {
   padding: 42px 46px;
-  color: #8c6e63;
+  color: var(--sepia-mid);
 }
 
 .panel-mini-brand {
   margin: 0 0 44px;
   font-weight: 700;
   font-size: 0.8rem;
-  color: #8c6e63;
+  color: var(--sepia-mid);
 }
 
 .admin-login-left h1 {
@@ -55,7 +67,7 @@
 
 .login-form label {
   margin-top: 6px;
-  color: #8c6e63;
+  color: var(--sepia-mid);
   font-size: 1rem;
   font-family: "Georgia", "Times New Roman", serif;
 }
@@ -63,29 +75,46 @@
 .login-form input {
   height: 42px;
   border-radius: 21px;
-  border: 2px solid #9c7046;
-  background: #d3a376;
-  color: #fff2df;
+  border: 2px solid var(--sepia-border);
+  background: rgba(184, 135, 88, 0.9);
+  color: var(--cream-light);
   padding: 0 16px;
   font-size: 0.92rem;
   outline: none;
+  box-shadow: 0 10px 24px rgba(23, 11, 5, 0.12);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .login-form input::placeholder {
-  color: #fff2df;
+  color: var(--cream-light);
+}
+
+.login-form input:focus {
+  border-color: #ffbd76;
+  box-shadow: 0 14px 28px rgba(23, 11, 5, 0.2);
+  transform: translateY(-1px);
 }
 
 .login-form button {
   margin-top: 8px;
   height: 44px;
   border-radius: 22px;
-  border: 2px solid #9c7046;
-  background: #d3a376;
-  color: #fff2df;
+  border: 2px solid var(--sepia-border);
+  background: var(--sepia-button);
+  color: var(--cream-light);
   font-size: 1.45rem;
   font-family: "Georgia", "Times New Roman", serif;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 10px 24px rgba(23, 11, 5, 0.18);
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.login-form button:hover,
+.login-form button:focus-visible {
+  background: var(--sepia-border);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(23, 11, 5, 0.25);
 }
 
 .signup-link {
@@ -96,7 +125,7 @@
 }
 
 .signup-link a {
-  color: #8c6e63;
+  color: var(--sepia-mid);
 }
 
 .login-meta {
@@ -110,7 +139,7 @@
 }
 
 .login-meta a {
-  color: #a0744a;
+  color: var(--sepia-border);
   text-decoration: none;
 }
 
@@ -122,11 +151,20 @@
   min-height: 38px;
   padding: 0 16px;
   border-radius: 999px;
-  border: 2px solid #9c7046;
-  background: #d3a376;
-  color: #fff2df;
+  border: 2px solid var(--sepia-border);
+  background: var(--sepia-button);
+  color: var(--cream-light);
   text-decoration: none;
   font-size: 0.85rem;
+  box-shadow: 0 8px 18px rgba(23, 11, 5, 0.14);
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.back-index-btn:hover,
+.back-index-btn:focus-visible {
+  background: var(--sepia-border);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(23, 11, 5, 0.22);
 }
 
 .admin-login-right {
@@ -142,11 +180,19 @@
   width: min(360px, 62vw);
   aspect-ratio: 1;
   border-radius: 100%;
-  background: #d3a376;
+  background: var(--sepia-soft);
   overflow: hidden;
-  box-shadow: inset 0 0 0 7px rgba(0, 0, 0, 0.08);
+  border: 7px solid var(--sepia-border);
+  box-shadow: 0 18px 38px rgba(23, 11, 5, 0.28), inset 0 0 0 7px rgba(255, 242, 223, 0.2);
   display: grid;
   place-items: center;
+}
+
+.avatar-ring img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .error-text {

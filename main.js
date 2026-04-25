@@ -2,7 +2,11 @@ const searchForm = document.getElementById("searchForm");
 const familyIdInput = document.getElementById("familyIdInput");
 const familyResults = document.getElementById("familyResults");
 const resultsStatus = document.getElementById("resultsStatus");
-const CARD_ACCENTS = ["#9b513a", "#4e8397", "#c56a45", "#2f6f8f", "#7a7055"];
+const resultsSection = document.getElementById("resultsSection");
+const CARD_ACCENTS = ["#7b4b34", "#8d5a3e", "#a46a47", "#6a3d2a", "#8b6846"];
+let resultsSectionAnimationTimer = 0;
+let imagePreviewElements = null;
+let lastImagePreviewTrigger = null;
 
 if (searchForm) {
   searchForm.addEventListener("submit", (event) => {
@@ -116,6 +120,7 @@ function renderFamilyContent(personId) {
   if (!items.length) {
     updateResultsStatus(`No encontramos recuerdos asociados al ID "${personId}".`);
     renderEmptyMessage(`No hay contenido disponible para el ID ${personId}.`);
+    highlightResultsSection();
     return;
   }
 
@@ -134,6 +139,8 @@ function renderFamilyContent(personId) {
       { once: true }
     );
   });
+
+  highlightResultsSection();
 }
 
 function createResultCard(item, index, personId, personName) {
@@ -168,7 +175,7 @@ function createResultCard(item, index, personId, personName) {
   buttonWrap.style.setProperty("--purchase-button--background", "var(--_accent)");
   buttonWrap.style.setProperty("--purchase-button--foreground", "var(--_accent-contrast)");
 
-  const actionControl = createActionControl(item, mediaLabel, mediaContent.video);
+  const actionControl = createActionControl(item, mediaLabel, mediaContent.video, title, description);
   buttonWrap.appendChild(actionControl);
 
   const contentPanel = document.createElement("div");
@@ -237,13 +244,26 @@ function createThumbnail(item, title, mediaLabel) {
   return { stack, video: null };
 }
 
-function createActionControl(item, mediaLabel, videoElement) {
+function createActionControl(item, mediaLabel, videoElement, title, description) {
   if (videoElement) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "scope purchase-button";
     button.textContent = "Abrir video";
     setupVideoPlayback(button, videoElement);
+    return button;
+  }
+
+  if (mediaLabel === "Imagen" && item?.dataUrl) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "scope purchase-button";
+    button.textContent = "Ver imagen completa";
+
+    button.addEventListener("click", () => {
+      openImagePreview(item.dataUrl, title, description, button);
+    });
+
     return button;
   }
 
@@ -294,6 +314,113 @@ function syncVideoPresentation(video, button) {
   video.classList.toggle("is-playing", isPlaying);
   video.classList.toggle("is-idle", !isPlaying);
   button.textContent = isPlaying ? "Pausar video" : "Abrir video";
+}
+
+function ensureImagePreviewElements() {
+  if (imagePreviewElements) {
+    return imagePreviewElements;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "image-preview";
+  overlay.setAttribute("hidden", "");
+  overlay.setAttribute("aria-hidden", "true");
+
+  const dialog = document.createElement("div");
+  dialog.className = "image-preview__dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-label", "Vista ampliada de la imagen");
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "image-preview__close";
+  closeButton.setAttribute("aria-label", "Cerrar visor de imagen");
+  closeButton.textContent = "Cerrar";
+
+  const figure = document.createElement("figure");
+  figure.className = "image-preview__figure";
+
+  const image = document.createElement("img");
+  image.className = "image-preview__image";
+  image.alt = "";
+
+  const caption = document.createElement("figcaption");
+  caption.className = "image-preview__caption";
+
+  figure.appendChild(image);
+  figure.appendChild(caption);
+  dialog.appendChild(closeButton);
+  dialog.appendChild(figure);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeImagePreview();
+    }
+  });
+
+  closeButton.addEventListener("click", () => {
+    closeImagePreview();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeImagePreview();
+    }
+  });
+
+  imagePreviewElements = { overlay, dialog, image, caption, closeButton };
+  return imagePreviewElements;
+}
+
+function openImagePreview(imageUrl, title, description, triggerElement) {
+  if (!imageUrl) {
+    return;
+  }
+
+  const { overlay, image, caption, closeButton } = ensureImagePreviewElements();
+  const captionParts = [title, description].filter(Boolean);
+
+  image.src = imageUrl;
+  image.alt = title || "Imagen ampliada del recuerdo";
+  caption.textContent = captionParts.join(" · ");
+  overlay.hidden = false;
+  overlay.setAttribute("aria-hidden", "false");
+  overlay.classList.add("is-open");
+  document.body.classList.add("is-image-preview-open");
+  lastImagePreviewTrigger = triggerElement || null;
+
+  requestAnimationFrame(() => {
+    closeButton.focus();
+  });
+}
+
+function closeImagePreview() {
+  if (!imagePreviewElements) {
+    return;
+  }
+
+  const { overlay, image, caption } = imagePreviewElements;
+
+  if (overlay.hidden) {
+    return;
+  }
+
+  overlay.classList.remove("is-open");
+  overlay.hidden = true;
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-image-preview-open");
+  image.removeAttribute("src");
+  image.alt = "";
+  caption.textContent = "";
+
+  if (lastImagePreviewTrigger instanceof HTMLElement) {
+    lastImagePreviewTrigger.focus();
+  }
+
+  lastImagePreviewTrigger = null;
 }
 
 function renderEmptyMessage(message) {
@@ -359,6 +486,29 @@ function formatEventDate(rawDate) {
     month: "long",
     year: "numeric"
   });
+}
+
+function highlightResultsSection() {
+  if (!resultsSection) {
+    return;
+  }
+
+  window.clearTimeout(resultsSectionAnimationTimer);
+  resultsSection.classList.remove("is-transitioning");
+  void resultsSection.offsetWidth;
+  resultsSection.classList.add("is-transitioning");
+
+  requestAnimationFrame(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    resultsSection.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start"
+    });
+  });
+
+  resultsSectionAnimationTimer = window.setTimeout(() => {
+    resultsSection.classList.remove("is-transitioning");
+  }, 950);
 }
 
 updateResultsStatus("Ingresa una identificacion para ver los recuerdos disponibles.");
