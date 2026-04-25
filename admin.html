@@ -56,10 +56,11 @@
       </div>
 
       <form id="uploadForm" class="admin-form">
-        <label class="field-label" for="personId">Selecciona un ID registrado</label>
-        <select id="personId" name="personId" required>
-          <option value="">Selecciona un ID con nombre</option>
-        </select>
+        <div class="person-picker">
+          <label class="field-label" for="personId">Busca o ingresa un ID registrado</label>
+          <input id="personId" name="personId" type="search" inputmode="numeric" placeholder="Escribe el ID o selecciona uno" autocomplete="off" aria-controls="personIdOptions" aria-expanded="false" required>
+          <div id="personIdOptions" class="person-options is-hidden" role="listbox" aria-label="IDs registrados"></div>
+        </div>
 
         <div class="upload-grid">
           <div class="upload-drop">

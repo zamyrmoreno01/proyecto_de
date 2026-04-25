@@ -7,6 +7,8 @@ const CARD_ACCENTS = ["#7b4b34", "#8d5a3e", "#a46a47", "#6a3d2a", "#8b6846"];
 let resultsSectionAnimationTimer = 0;
 let imagePreviewElements = null;
 let lastImagePreviewTrigger = null;
+let videoPreviewElements = null;
+let lastVideoPreviewTrigger = null;
 
 if (searchForm) {
   searchForm.addEventListener("submit", (event) => {
@@ -175,7 +177,7 @@ function createResultCard(item, index, personId, personName) {
   buttonWrap.style.setProperty("--purchase-button--background", "var(--_accent)");
   buttonWrap.style.setProperty("--purchase-button--foreground", "var(--_accent-contrast)");
 
-  const actionControl = createActionControl(item, mediaLabel, mediaContent.video, title, description);
+  const actionControl = createActionControl(item, mediaLabel, title, description);
   buttonWrap.appendChild(actionControl);
 
   const contentPanel = document.createElement("div");
@@ -226,15 +228,25 @@ function createThumbnail(item, title, mediaLabel) {
   }
 
   if (item?.type?.startsWith("video/")) {
-    const video = document.createElement("video");
-    video.className = "result-media result-video is-idle";
-    video.src = item.dataUrl;
-    video.controls = true;
-    video.preload = "metadata";
-    video.setAttribute("playsinline", "");
-    video.setAttribute("aria-label", title || "Video del recuerdo");
-    stack.appendChild(video);
-    return { stack, video };
+    const baseVideo = document.createElement("video");
+    baseVideo.className = "result-media result-media-base result-video-cover";
+    baseVideo.src = item.dataUrl;
+    baseVideo.preload = "metadata";
+    baseVideo.muted = true;
+    baseVideo.setAttribute("playsinline", "");
+    baseVideo.setAttribute("aria-hidden", "true");
+
+    const hoverVideo = document.createElement("video");
+    hoverVideo.className = "result-media result-media-hover result-video-cover";
+    hoverVideo.src = item.dataUrl;
+    hoverVideo.preload = "metadata";
+    hoverVideo.muted = true;
+    hoverVideo.setAttribute("playsinline", "");
+    hoverVideo.setAttribute("aria-label", title || "Caratula del video");
+
+    stack.appendChild(baseVideo);
+    stack.appendChild(hoverVideo);
+    return { stack, video: null };
   }
 
   const fallback = document.createElement("div");
@@ -244,13 +256,17 @@ function createThumbnail(item, title, mediaLabel) {
   return { stack, video: null };
 }
 
-function createActionControl(item, mediaLabel, videoElement, title, description) {
-  if (videoElement) {
+function createActionControl(item, mediaLabel, title, description) {
+  if (item?.type?.startsWith("video/") && item?.dataUrl) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "scope purchase-button";
     button.textContent = "Abrir video";
-    setupVideoPlayback(button, videoElement);
+
+    button.addEventListener("click", () => {
+      openVideoPreview(item.dataUrl, title, description, button);
+    });
+
     return button;
   }
 
@@ -274,46 +290,6 @@ function createActionControl(item, mediaLabel, videoElement, title, description)
   actionLink.rel = "noopener noreferrer";
   actionLink.textContent = mediaLabel === "Imagen" ? "Abrir imagen" : "Abrir recuerdo";
   return actionLink;
-}
-
-function setupVideoPlayback(button, video) {
-  syncVideoPresentation(video, button);
-
-  button.addEventListener("click", () => {
-    if (video.paused || video.ended) {
-      if (video.ended) {
-        video.currentTime = 0;
-      }
-
-      video.play().catch(() => {
-        syncVideoPresentation(video, button);
-      });
-      return;
-    }
-
-    video.pause();
-  });
-
-  video.addEventListener("play", () => {
-    syncVideoPresentation(video, button);
-  });
-
-  video.addEventListener("pause", () => {
-    syncVideoPresentation(video, button);
-  });
-
-  video.addEventListener("ended", () => {
-    video.currentTime = 0;
-    syncVideoPresentation(video, button);
-  });
-}
-
-function syncVideoPresentation(video, button) {
-  const isPlaying = !video.paused && !video.ended;
-
-  video.classList.toggle("is-playing", isPlaying);
-  video.classList.toggle("is-idle", !isPlaying);
-  button.textContent = isPlaying ? "Pausar video" : "Abrir video";
 }
 
 function ensureImagePreviewElements() {
@@ -375,6 +351,67 @@ function ensureImagePreviewElements() {
   return imagePreviewElements;
 }
 
+function ensureVideoPreviewElements() {
+  if (videoPreviewElements) {
+    return videoPreviewElements;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "video-preview";
+  overlay.setAttribute("hidden", "");
+  overlay.setAttribute("aria-hidden", "true");
+
+  const dialog = document.createElement("div");
+  dialog.className = "video-preview__dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-label", "Reproductor de video");
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "video-preview__close";
+  closeButton.setAttribute("aria-label", "Cerrar reproductor de video");
+  closeButton.textContent = "Cerrar";
+
+  const figure = document.createElement("figure");
+  figure.className = "video-preview__figure";
+
+  const video = document.createElement("video");
+  video.className = "video-preview__video";
+  video.controls = true;
+  video.preload = "metadata";
+  video.setAttribute("playsinline", "");
+
+  const caption = document.createElement("figcaption");
+  caption.className = "video-preview__caption";
+
+  figure.appendChild(video);
+  figure.appendChild(caption);
+  dialog.appendChild(closeButton);
+  dialog.appendChild(figure);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeVideoPreview();
+    }
+  });
+
+  closeButton.addEventListener("click", () => {
+    closeVideoPreview();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeVideoPreview();
+    }
+  });
+
+  videoPreviewElements = { overlay, dialog, video, caption, closeButton };
+  return videoPreviewElements;
+}
+
 function openImagePreview(imageUrl, title, description, triggerElement) {
   if (!imageUrl) {
     return;
@@ -385,12 +422,35 @@ function openImagePreview(imageUrl, title, description, triggerElement) {
 
   image.src = imageUrl;
   image.alt = title || "Imagen ampliada del recuerdo";
-  caption.textContent = captionParts.join(" · ");
+  caption.textContent = captionParts.join(" - ");
   overlay.hidden = false;
   overlay.setAttribute("aria-hidden", "false");
   overlay.classList.add("is-open");
   document.body.classList.add("is-image-preview-open");
   lastImagePreviewTrigger = triggerElement || null;
+
+  requestAnimationFrame(() => {
+    closeButton.focus();
+  });
+}
+
+function openVideoPreview(videoUrl, title, description, triggerElement) {
+  if (!videoUrl) {
+    return;
+  }
+
+  const { overlay, video, caption, closeButton } = ensureVideoPreviewElements();
+  const captionParts = [title, description].filter(Boolean);
+
+  video.src = videoUrl;
+  video.setAttribute("aria-label", title || "Video del recuerdo");
+  caption.textContent = captionParts.join(" - ");
+  overlay.hidden = false;
+  overlay.setAttribute("aria-hidden", "false");
+  overlay.classList.add("is-open");
+  document.body.classList.add("is-video-preview-open");
+  lastVideoPreviewTrigger = triggerElement || null;
+  video.play().catch(() => {});
 
   requestAnimationFrame(() => {
     closeButton.focus();
@@ -421,6 +481,34 @@ function closeImagePreview() {
   }
 
   lastImagePreviewTrigger = null;
+}
+
+function closeVideoPreview() {
+  if (!videoPreviewElements) {
+    return;
+  }
+
+  const { overlay, video, caption } = videoPreviewElements;
+
+  if (overlay.hidden) {
+    return;
+  }
+
+  overlay.classList.remove("is-open");
+  overlay.hidden = true;
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-video-preview-open");
+  video.pause();
+  video.removeAttribute("src");
+  video.removeAttribute("aria-label");
+  video.load();
+  caption.textContent = "";
+
+  if (lastVideoPreviewTrigger instanceof HTMLElement) {
+    lastVideoPreviewTrigger.focus();
+  }
+
+  lastVideoPreviewTrigger = null;
 }
 
 function renderEmptyMessage(message) {

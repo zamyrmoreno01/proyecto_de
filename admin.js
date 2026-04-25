@@ -5,6 +5,8 @@ const createIdMessage = document.getElementById("createIdMessage");
 const createIdError = document.getElementById("createIdError");
 const uploadForm = document.getElementById("uploadForm");
 const personIdInput = document.getElementById("personId");
+const personIdOptions = document.getElementById("personIdOptions");
+const personPicker = document.querySelector(".person-picker");
 const filesInput = document.getElementById("mediaFiles");
 const eventNameInput = document.getElementById("eventName");
 const eventDateInput = document.getElementById("eventDate");
@@ -16,6 +18,7 @@ const idSearchInput = document.getElementById("idSearch");
 const logoutBtn = document.getElementById("logoutBtn");
 const MAX_MP4_DURATION_SECONDS = 1800;
 const MAX_MP4_SIZE_BYTES = 1.5 * 1024 * 1024 * 1024;
+let personOptionEntries = [];
 
 if (!isAdminLoggedIn()) {
   window.location.replace("./login.html");
@@ -141,6 +144,22 @@ idSearchInput?.addEventListener("input", () => {
   renderAdminGallery(idSearchInput.value.trim());
 });
 
+personIdInput?.addEventListener("focus", () => {
+  renderPersonOptions(personIdInput.value.trim());
+  showPersonOptions();
+});
+
+personIdInput?.addEventListener("input", () => {
+  renderPersonOptions(personIdInput.value.trim());
+  showPersonOptions();
+});
+
+document.addEventListener("click", (event) => {
+  if (!personPicker?.contains(event.target)) {
+    hidePersonOptions();
+  }
+});
+
 function clearMessages() {
   if (createIdMessage) createIdMessage.textContent = "";
   if (createIdError) createIdError.textContent = "";
@@ -149,22 +168,62 @@ function clearMessages() {
 }
 
 function populatePersonOptions(selectedId = "") {
-  if (!personIdInput) return;
+  if (!personIdInput || !personIdOptions) return;
 
   const db = getAdminDatabase();
-  const entries = Object.values(db)
+  personOptionEntries = Object.values(db)
     .filter((entry) => entry && typeof entry.name === "string" && entry.name.trim())
     .sort((a, b) => String(a.id).localeCompare(String(b.id), "es"));
 
-  personIdInput.innerHTML = '<option value="">Selecciona un ID con nombre</option>';
+  personIdInput.value = selectedId;
+  renderPersonOptions(selectedId);
+  hidePersonOptions();
+}
 
-  entries.forEach((entry) => {
-    const option = document.createElement("option");
-    option.value = entry.id;
-    option.textContent = `${entry.id} - ${entry.name}`;
-    option.selected = entry.id === selectedId;
-    personIdInput.appendChild(option);
+function renderPersonOptions(searchTerm = "") {
+  if (!personIdOptions) return;
+
+  const normalizedSearch = normalizeText(searchTerm);
+  const matches = personOptionEntries.filter((entry) => {
+    if (!normalizedSearch) return true;
+    return normalizeText(`${entry.id} ${entry.name}`).includes(normalizedSearch);
   });
+
+  personIdOptions.innerHTML = "";
+
+  if (!matches.length) {
+    const empty = document.createElement("div");
+    empty.className = "person-option";
+    empty.textContent = "No hay IDs registrados";
+    personIdOptions.appendChild(empty);
+    return;
+  }
+
+  matches.forEach((entry) => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "person-option";
+    option.setAttribute("role", "option");
+    option.innerHTML = `<strong>${escapeHtml(entry.id)}</strong><span>${escapeHtml(entry.name)}</span>`;
+    option.addEventListener("click", () => {
+      personIdInput.value = entry.id;
+      hidePersonOptions();
+      personIdInput.focus();
+    });
+    personIdOptions.appendChild(option);
+  });
+}
+
+function showPersonOptions() {
+  if (!personIdOptions || !personIdInput) return;
+  personIdOptions.classList.remove("is-hidden");
+  personIdInput.setAttribute("aria-expanded", "true");
+}
+
+function hidePersonOptions() {
+  if (!personIdOptions || !personIdInput) return;
+  personIdOptions.classList.add("is-hidden");
+  personIdInput.setAttribute("aria-expanded", "false");
 }
 
 function fileToMediaRecord(file, metadata) {
