@@ -1,94 +1,88 @@
-const STORAGE_KEYS = {
-  adminSession: "cg_admin_session",
-  mediaByPerson: "cg_media_by_person"
-};
-
-function normalizeStructuredDatabase(rawValue) {
-  if (!rawValue || typeof rawValue !== "object") {
-    return {};
-  }
-
-  const normalized = {};
-
-  Object.entries(rawValue).forEach(([personId, entry]) => {
-    if (Array.isArray(entry)) {
-      normalized[personId] = {
-        id: personId,
-        name: "",
-        media: entry
-      };
-      return;
-    }
-
-    if (!entry || typeof entry !== "object") {
-      return;
-    }
-
-    const media = Array.isArray(entry.media)
-      ? entry.media
-      : Array.isArray(entry.items)
-        ? entry.items
-        : [];
-
-    normalized[personId] = {
-      id: String(entry.id || personId),
-      name: typeof entry.name === "string" ? entry.name : "",
-      media
-    };
+async function apiFetch(path, options = {}) {
+  const response = await fetch(path, {
+    credentials: "same-origin",
+    headers: {
+      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+      ...(options.headers || {})
+    },
+    ...options
   });
 
-  return normalized;
-}
-
-function getAdminDatabase() {
-  const raw = localStorage.getItem(STORAGE_KEYS.mediaByPerson);
-  if (!raw) return {};
+  let payload = null;
 
   try {
-    const parsed = JSON.parse(raw);
-    return normalizeStructuredDatabase(parsed);
+    payload = await response.json();
   } catch {
-    return {};
+    payload = null;
   }
+
+  if (!response.ok) {
+    const error = new Error(payload?.message || "Request failed.");
+    error.status = response.status;
+    throw error;
+  }
+
+  return payload;
 }
 
-function saveAdminDatabase(db) {
-  localStorage.setItem(
-    STORAGE_KEYS.mediaByPerson,
-    JSON.stringify(normalizeStructuredDatabase(db))
-  );
+function getAdminSession() {
+  return apiFetch("/api/auth/session");
 }
 
-function getMediaDatabase() {
-  const structuredDb = getAdminDatabase();
-  return Object.fromEntries(
-    Object.entries(structuredDb).map(([personId, entry]) => [
-      personId,
-      Array.isArray(entry.media) ? entry.media : []
-    ])
-  );
-}
-
-function saveMediaDatabase(db) {
-  const structuredDb = getAdminDatabase();
-  const nextDb = {};
-
-  Object.entries(db || {}).forEach(([personId, media]) => {
-    const current = structuredDb[personId] || { id: personId, name: "", media: [] };
-    nextDb[personId] = {
-      id: personId,
-      name: current.name || "",
-      media: Array.isArray(media) ? media : []
-    };
+function loginAdmin(credentials) {
+  return apiFetch("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(credentials)
   });
-
-  saveAdminDatabase(nextDb);
 }
 
-function isAdminLoggedIn() {
-  return localStorage.getItem(STORAGE_KEYS.adminSession) === "true";
+function logoutAdmin() {
+  return apiFetch("/api/auth/logout", {
+    method: "POST"
+  });
 }
 
-function setAdminSession(value) {
-  localStorage.setItem(STORAGE_KEYS.adminSession, value ? "true" : "false");
+function fetchPersons(search = "", includeMedia = false) {
+  const params = new URLSearchParams();
+
+  if (search) {
+    params.set("search", search);
+  }
+
+  if (includeMedia) {
+    params.set("includeMedia", "true");
+  }
+
+  return apiFetch(`/api/persons?${params.toString()}`);
+}
+
+function createPerson(payload) {
+  return apiFetch("/api/persons", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+function fetchPublicMemories(personId) {
+  return apiFetch(`/api/persons/${encodeURIComponent(personId)}/media`);
+}
+
+function uploadMedia(formData) {
+  return apiFetch("/api/media", {
+    method: "POST",
+    body: formData
+  });
+}
+
+function updateMedia(mediaId, payload) {
+  return apiFetch(`/api/media/${encodeURIComponent(mediaId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+function deleteMedia(mediaId) {
+  return apiFetch(`/api/media/${encodeURIComponent(mediaId)}`, {
+    method: "DELETE"
+  });
 }

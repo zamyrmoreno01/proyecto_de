@@ -11,98 +11,14 @@ let videoPreviewElements = null;
 let lastVideoPreviewTrigger = null;
 
 if (searchForm) {
-  searchForm.addEventListener("submit", (event) => {
+  searchForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const personId = familyIdInput.value.trim();
-    renderFamilyContent(personId);
+    await renderFamilyContent(personId);
   });
 }
 
-/*
-function renderFamilyContent(personId) {
-  familyResults.innerHTML = "";
-  if (!personId) {
-    updateResultsStatus("Ingresa una identificación para ver los recuerdos disponibles.");
-    return;
-  }
-
-  const database = getMediaDatabase();
-  const items = database[personId] || [];
-
-  if (!items.length) {
-    updateResultsStatus(`No encontramos recuerdos asociados a la identificación "${personId}".`);
-    familyResults.innerHTML = `<p class="empty-msg">No hay contenido para la identificación "${escapeHtml(personId)}".</p>`;
-    return;
-  }
-
-  updateResultsStatus(
-    `Mostrando ${items.length} recuerdo${items.length === 1 ? "" : "s"} para la identificación "${personId}".`
-  );
-
-  items.forEach((item, index) => {
-    const card = document.createElement("article");
-    card.className = "media-card is-entering";
-    card.style.animationDelay = `${index * 90}ms`;
-
-    if (item.type.startsWith("image/")) {
-      const img = document.createElement("img");
-      img.src = item.dataUrl;
-      img.alt = item.eventName || item.name || "Imagen familiar";
-      card.appendChild(img);
-    } else if (item.type.startsWith("video/")) {
-      const video = document.createElement("video");
-      video.src = item.dataUrl;
-      video.controls = true;
-      card.appendChild(video);
-    }
-
-    const caption = document.createElement("p");
-    caption.textContent = item.eventName || item.name || "Archivo";
-    card.appendChild(caption);
-
-    if (item.eventDate || item.description) {
-      const detail = document.createElement("p");
-      const detailParts = [];
-
-      if (item.eventDate) {
-        detailParts.push(`Fecha: ${item.eventDate}`);
-      }
-
-      if (item.description) {
-        detailParts.push(item.description);
-      }
-
-      detail.textContent = detailParts.join(" | ");
-      card.appendChild(detail);
-    }
-
-    familyResults.appendChild(card);
-
-    card.addEventListener(
-      "animationend",
-      () => {
-        card.classList.remove("is-entering");
-        card.style.animationDelay = "";
-      },
-      { once: true }
-    );
-  });
-}
-
-function updateResultsStatus(message) {
-  if (resultsStatus) {
-    resultsStatus.textContent = message;
-  }
-}
-
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-*/
-
-function renderFamilyContent(personId) {
+async function renderFamilyContent(personId) {
   if (!familyResults) {
     return;
   }
@@ -114,40 +30,52 @@ function renderFamilyContent(personId) {
     return;
   }
 
-  const database = getAdminDatabase();
-  const personRecord = database[personId];
-  const personName = getPersonName(personRecord);
-  const items = personRecord && Array.isArray(personRecord.media) ? personRecord.media : [];
+  try {
+    const payload = await fetchPublicMemories(personId);
+    const personName = getPersonName(payload?.person);
+    const items = Array.isArray(payload?.media) ? payload.media : [];
 
-  if (!items.length) {
-    updateResultsStatus(`No encontramos recuerdos asociados al ID "${personId}".`);
-    renderEmptyMessage(`No hay contenido disponible para el ID ${personId}.`);
+    if (!items.length) {
+      updateResultsStatus(`No encontramos recuerdos asociados al ID "${personId}".`);
+      renderEmptyMessage(`No hay contenido disponible para el ID ${personId}.`);
+      highlightResultsSection();
+      return;
+    }
+
+    updateResultsStatus(buildResultsStatus(items.length, personId, personName));
+
+    items.forEach((item, index) => {
+      const card = createResultCard(item, index, personId, personName);
+      familyResults.appendChild(card);
+
+      card.addEventListener(
+        "animationend",
+        () => {
+          card.classList.remove("is-entering");
+          card.style.animationDelay = "";
+        },
+        { once: true }
+      );
+    });
+
     highlightResultsSection();
-    return;
+  } catch (error) {
+    if (error?.status === 404) {
+      updateResultsStatus(`No encontramos recuerdos asociados al ID "${personId}".`);
+      renderEmptyMessage(`No hay contenido disponible para el ID ${personId}.`);
+      highlightResultsSection();
+      return;
+    }
+
+    updateResultsStatus("No se pudo consultar el backend en este momento.");
+    renderEmptyMessage("La consulta no pudo completarse. Intenta nuevamente.");
+    highlightResultsSection();
   }
-
-  updateResultsStatus(buildResultsStatus(items.length, personId, personName));
-
-  items.forEach((item, index) => {
-    const card = createResultCard(item, index, personId, personName);
-    familyResults.appendChild(card);
-
-    card.addEventListener(
-      "animationend",
-      () => {
-        card.classList.remove("is-entering");
-        card.style.animationDelay = "";
-      },
-      { once: true }
-    );
-  });
-
-  highlightResultsSection();
 }
 
 function createResultCard(item, index, personId, personName) {
   const card = document.createElement("section");
-  const title = (item?.eventName || item?.name || "Recuerdo sin titulo").trim();
+  const title = (item?.eventName || item?.originalName || "Recuerdo sin titulo").trim();
   const mediaLabel = getMediaLabel(item?.type);
   const description = (item?.description || "Este recuerdo aun no tiene una descripcion registrada.").trim();
   const mediaContent = createThumbnail(item, title, mediaLabel);
@@ -212,25 +140,25 @@ function createThumbnail(item, title, mediaLabel) {
   if (item?.type?.startsWith("image/")) {
     const baseImage = document.createElement("img");
     baseImage.className = "result-media result-media-base";
-    baseImage.src = item.dataUrl;
+    baseImage.src = item.fileUrl;
     baseImage.alt = "";
     baseImage.loading = "lazy";
 
     const hoverImage = document.createElement("img");
     hoverImage.className = "result-media result-media-hover";
-    hoverImage.src = item.dataUrl;
+    hoverImage.src = item.fileUrl;
     hoverImage.alt = title || "Imagen del recuerdo";
     hoverImage.loading = "lazy";
 
     stack.appendChild(baseImage);
     stack.appendChild(hoverImage);
-    return { stack, video: null };
+    return { stack };
   }
 
   if (item?.type?.startsWith("video/")) {
     const baseVideo = document.createElement("video");
     baseVideo.className = "result-media result-media-base result-video-cover";
-    baseVideo.src = item.dataUrl;
+    baseVideo.src = item.fileUrl;
     baseVideo.preload = "metadata";
     baseVideo.muted = true;
     baseVideo.setAttribute("playsinline", "");
@@ -238,7 +166,7 @@ function createThumbnail(item, title, mediaLabel) {
 
     const hoverVideo = document.createElement("video");
     hoverVideo.className = "result-media result-media-hover result-video-cover";
-    hoverVideo.src = item.dataUrl;
+    hoverVideo.src = item.fileUrl;
     hoverVideo.preload = "metadata";
     hoverVideo.muted = true;
     hoverVideo.setAttribute("playsinline", "");
@@ -246,45 +174,45 @@ function createThumbnail(item, title, mediaLabel) {
 
     stack.appendChild(baseVideo);
     stack.appendChild(hoverVideo);
-    return { stack, video: null };
+    return { stack };
   }
 
   const fallback = document.createElement("div");
   fallback.className = "result-media result-fallback";
   fallback.textContent = "Archivo no compatible";
   stack.appendChild(fallback);
-  return { stack, video: null };
+  return { stack };
 }
 
 function createActionControl(item, mediaLabel, title, description) {
-  if (item?.type?.startsWith("video/") && item?.dataUrl) {
+  if (item?.type?.startsWith("video/") && item?.fileUrl) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "scope purchase-button";
     button.textContent = "Abrir video";
 
     button.addEventListener("click", () => {
-      openVideoPreview(item.dataUrl, title, description, button);
+      openVideoPreview(item.fileUrl, title, description, button);
     });
 
     return button;
   }
 
-  if (mediaLabel === "Imagen" && item?.dataUrl) {
+  if (mediaLabel === "Imagen" && item?.fileUrl) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "scope purchase-button";
     button.textContent = "Ver imagen completa";
 
     button.addEventListener("click", () => {
-      openImagePreview(item.dataUrl, title, description, button);
+      openImagePreview(item.fileUrl, title, description, button);
     });
 
     return button;
   }
 
   const actionLink = document.createElement("a");
-  actionLink.href = item?.dataUrl || "#";
+  actionLink.href = item?.fileUrl || "#";
   actionLink.className = "scope purchase-button";
   actionLink.target = "_blank";
   actionLink.rel = "noopener noreferrer";

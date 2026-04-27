@@ -1,30 +1,28 @@
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "123456";
-
 const loginForm = document.getElementById("loginForm");
 const loginError = document.getElementById("loginError");
 
-if (isAdminLoggedIn()) {
-  window.location.replace("./admin.html");
-}
+getAdminSession()
+  .then(() => {
+    window.location.replace("./admin.html");
+  })
+  .catch(() => {});
 
-loginForm?.addEventListener("submit", (event) => {
+loginForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const username = (document.getElementById("username")?.value || "").trim();
   const password = (document.getElementById("password")?.value || "").trim();
 
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
+  try {
+    await loginAdmin({ username, password });
     if (loginError) {
       loginError.textContent = "";
     }
-    setAdminSession(true);
     window.location.href = "./admin.html";
-    return;
-  }
-
-  if (loginError) {
-    loginError.textContent = "Usuario o contraseña incorrectos.";
+  } catch {
+    if (loginError) {
+      loginError.textContent = "Usuario o contrasena incorrectos.";
+    }
   }
 });
 
